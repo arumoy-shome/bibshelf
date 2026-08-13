@@ -36,6 +36,9 @@ both pypi.org and test.pypi.org.
 
 A version on PyPI cannot be replaced, only yanked, so the rehearsal is worth it.
 
+0.1.0 went out on 13 August 2026, rehearsed on TestPyPI first. Both pending
+publishers have since become real ones.
+
 ## Decisions worth not re-litigating
 
 These were deliberate and mostly came from the author, who has a real library of
