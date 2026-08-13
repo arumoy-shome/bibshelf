@@ -9,7 +9,7 @@ converter. That copy still exists but is superseded; see "Open items".
 ## Running things
 
 ```console
-uv run pytest            # 112 tests, ~0.06s, no network
+uv run pytest            # 123 tests, ~0.06s, no network
 uv run bs <identifier>   # from the repo
 bs <identifier>          # installed via: uv tool install ~/code/bibshelf
 ```
@@ -17,6 +17,20 @@ bs <identifier>          # installed via: uv tool install ~/code/bibshelf
 Tests never touch the network: `tests/fixtures/*.json` hold recorded API
 responses and the `offline` fixture monkeypatches `fetch`. The suite passes on
 Python 3.11 and 3.13 (both verified, not assumed).
+
+## Releasing
+
+Bump `version` in `pyproject.toml`, then tag: `.github/workflows/publish.yml`
+fires on `v*`, runs the tests, refuses a tag that disagrees with the declared
+version, and uploads. Its `workflow_dispatch` publishes to TestPyPI instead, for
+rehearsing a release.
+
+Uploads use **trusted publishing**, so there is no api token anywhere: PyPI
+trades the workflow's OIDC token for a short lived one. It has to be registered
+per index — the publisher is `arumoy-shome/bibshelf`, workflow `publish.yml`, on
+both pypi.org and test.pypi.org.
+
+A version on PyPI cannot be replaced, only yanked, so the rehearsal is worth it.
 
 ## Decisions worth not re-litigating
 
@@ -66,6 +80,21 @@ duplicate authors.
 anything, so an ISBN checked second would be mistaken for an arXiv id. A bad
 ISBN checksum exits rather than falling through.
 
+**The library is `--library`, then `$BIBSHELF_LIBRARY`, then
+`~/Documents/references`.** `library_root()` resolves the three and expands the
+`~` an environment variable is likely to be written with. The directories are
+still not created: `archive` exits if `files/` or `books/` is missing, on the
+grounds that a typo'd path should not quietly grow a new library.
+
+**No stdlib clipboard exists.** `tkinter` is the only candidate and it is not
+usable here — under X11 the clipboard belongs to the process that set it, so it
+empties the moment `bs` exits. `to_clipboard` shells out to the first of
+`pbcopy` / `clip` / `wl-copy` / `xclip` / `xsel` / `clip.exe` that works for the
+platform, and returns False if none did so `main` can print the entry rather
+than swallow it. Missing (`FileNotFoundError`) and present-but-failing
+(`CalledProcessError`, e.g. `wl-copy` with no wayland session) both fall
+through to the next candidate.
+
 **Only pages 1–2 of a pdf are scanned** for identifiers. Going further picks up
 dois from the reference list. Unfilled latex placeholders
 (`10.1145/nnnnnnn.nnnnnnn`) are filtered.
@@ -88,16 +117,13 @@ would gain nothing from being methods.
 
 ## Open items
 
-- **`REFERENCES` is hardcoded** to `~/Documents/references` and shows up in
-  `bs --help`. Needs an env var and/or `--library` flag before anyone else can
-  use this. Biggest blocker to publishing.
-- **`pbcopy` is macOS-only.** `-x` and the bibkey-to-clipboard behaviour do
-  nothing on Linux, and CI will not catch it.
-- **Not pushed and not published.** The name is free on PyPI. `master` is two
-  commits ahead of `origin`.
+- **The clipboard dispatch is only proven on macOS.** The linux and windows
+  branches are unit-tested with a stubbed `subprocess.run`, so the command names
+  and arguments have never actually been run. CI will not catch it either. The
+  classifiers claim macOS and Linux only, for that reason, though the code has a
+  `win32` branch.
 - **`~/dotfiles` still has the old copy** — `bin/doi2bib` plus untracked
   `tests/`, `pyproject.toml`, `uv.lock`. Remove once `bs` has proved itself.
-- **Untested**: `read_pdf`, `to_clipboard`, `run`, and `main()`'s argparse
-  wiring. All thin wrappers.
+- **Untested**: `read_pdf` and `main()`'s argparse wiring. Both thin wrappers.
 - The naming rules are one researcher's convention. Templating them would be
   the honest thing to do for a public tool.

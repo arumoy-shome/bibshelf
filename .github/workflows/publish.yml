@@ -1,0 +1,54 @@
+name: publish
+
+# Trusted publishing: PyPI trades this workflow's OIDC token for a short lived
+# upload token, so there is no api token to store or rotate. The publisher has
+# to be registered once per index, on pypi.org and on test.pypi.org.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      index:
+        description: which index to publish to
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required to mint the OIDC token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - run: uv sync
+      - run: uv run pytest
+
+      # a tag that disagrees with pyproject.toml would publish the wrong
+      # version under the right name, and neither can be taken back
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          declared=$(uv version --short)
+          if [ "$tagged" != "$declared" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version $declared"
+            exit 1
+          fi
+
+      - run: uv build
+      - run: uvx twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: inputs.index == 'testpypi'
+        run: uv publish --trusted-publishing always
+          --publish-url https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/') || inputs.index == 'pypi'
+        run: uv publish --trusted-publishing always

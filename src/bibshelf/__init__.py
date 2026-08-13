@@ -7,18 +7,21 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import unicodedata
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from urllib import request, error
 
-REFERENCES = os.path.join(os.path.expanduser("~"), "Documents/references")
+# Where the library lives, unless --library or $BIBSHELF_LIBRARY says otherwise.
+DEFAULT_LIBRARY = "~/Documents/references"
+LIBRARY_VARIABLE = "BIBSHELF_LIBRARY"
 
 # APFS caps a filename at 255 bytes; leave room for the ".pdf"/".bib" suffix
 MAX_FILENAME_BYTES = 255 - len(".pdf")
 
 # Characters kept out of a filename. The apostrophe is deliberately kept, being
-# legal on APFS and present in the hand named files in REFERENCES.
+# legal on APFS and present in the hand named files in the library.
 ILLEGAL = str.maketrans(
     {
         "/": None,
@@ -584,12 +587,40 @@ def ascii_bibkey(reference: Reference, force: bool) -> Reference:
     return rebuilt
 
 
-def to_clipboard(text: str) -> None:
-    subprocess.run(["pbcopy"], input=text, text=True)
+def clipboards() -> tuple[list[str], ...]:
+    """The clipboard is out of the standard library's reach. tkinter comes
+    closest, but under X11 the clipboard belongs to the process that set it and
+    empties the moment a command like this one exits, so shell out instead. The
+    first of these that is installed wins; wayland and x11 are both offered
+    because a session may run either, or xwayland on top of wayland."""
+    if sys.platform == "darwin":
+        return (["pbcopy"],)
+    if sys.platform == "win32":
+        return (["clip"],)
+    return (
+        ["wl-copy"],
+        ["xclip", "-selection", "clipboard"],
+        ["xsel", "--clipboard", "--input"],
+        ["clip.exe"],  # wsl, where the windows clipboard is the real one
+    )
+
+
+def to_clipboard(text: str) -> bool:
+    """False if nothing on this machine could take it, so the caller can fall
+    back to printing rather than swallowing the entry."""
+    for command in clipboards():
+        try:
+            subprocess.run(command, input=text, text=True, check=True)
+            return True
+        except (OSError, subprocess.SubprocessError):
+            continue
+
+    print(f"bs: no clipboard command found (tried {', '.join(c[0] for c in clipboards())})")
+    return False
 
 
 def first_creator(authors: list[dict]) -> str:
-    """Render the author segment the way the files in REFERENCES do."""
+    """Render the author segment the way the files in the library do."""
     surnames = [
         author.get("family") or author.get("literal", "") for author in authors
     ]
@@ -620,6 +651,13 @@ def truncate(name: str) -> str:
     if len(encoded) <= MAX_FILENAME_BYTES:
         return name
     return encoded[:MAX_FILENAME_BYTES].decode("utf-8", errors="ignore").rstrip(" .")
+
+
+def library_root(argument: str | None = None) -> str:
+    """--library, then $BIBSHELF_LIBRARY, then the default. The environment
+    variable is expanded too: it is likely to be written with a ~ in it."""
+    root = argument or os.environ.get(LIBRARY_VARIABLE) or DEFAULT_LIBRARY
+    return os.path.expanduser(root.strip())
 
 
 class Library:
@@ -705,8 +743,14 @@ def main() -> None:
     parser.add_argument(
         "-p",
         "--pdf",
-        help=f"Move the pdf into {REFERENCES}, under files (or books for an "
+        help="Move the pdf into the library, under files (or books for an "
         "ISBN), named after the bib entry, and write the bib entry beside it",
+    )
+    parser.add_argument(
+        "-l",
+        "--library",
+        help="Where the library lives. Defaults to "
+        f"${LIBRARY_VARIABLE} if it is set, otherwise {DEFAULT_LIBRARY}",
     )
     parser.add_argument(
         "-f",
@@ -724,7 +768,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    library = Library(REFERENCES, args.force)
+    library = Library(library_root(args.library), args.force)
 
     if args.identifier:
         reference = resolve(args.identifier)
@@ -739,9 +783,10 @@ def main() -> None:
         bibkey = library.archive(args.pdf, reference)
 
     if args.to_clipboard:
-        to_clipboard(reference.bibtex)
+        to_clipboard(reference.bibtex) or print(reference.bibtex)
     elif bibkey:
-        to_clipboard(bibkey)  # bib2key expects the bibkey on the clipboard
+        # bib2key expects the bibkey on the clipboard
+        to_clipboard(bibkey) or print(bibkey)
     else:
         print(reference.bibtex)
 

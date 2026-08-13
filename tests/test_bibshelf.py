@@ -601,3 +601,105 @@ def test_archive_renames_a_pdf_already_in_the_library(bs, offline, library):
 
     assert not os.path.exists(stale)
     assert len(os.listdir(papers(library))) == 2  # renamed pdf plus its sidecar
+
+
+# --- where the library lives ------------------------------------------------
+
+
+def test_library_root_defaults_to_the_documented_path(bs, monkeypatch):
+    monkeypatch.delenv(bs.LIBRARY_VARIABLE, raising=False)
+    assert bs.library_root() == os.path.expanduser(bs.DEFAULT_LIBRARY)
+
+
+def test_library_root_reads_the_environment(bs, monkeypatch, tmp_path):
+    monkeypatch.setenv(bs.LIBRARY_VARIABLE, str(tmp_path))
+    assert bs.library_root() == str(tmp_path)
+
+
+def test_library_root_expands_a_tilde_from_the_environment(bs, monkeypatch):
+    """A path written by hand in a shell profile is likely to have one."""
+    monkeypatch.setenv(bs.LIBRARY_VARIABLE, "~/papers")
+    assert bs.library_root() == os.path.expanduser("~/papers")
+
+
+def test_library_root_prefers_the_argument(bs, monkeypatch, tmp_path):
+    monkeypatch.setenv(bs.LIBRARY_VARIABLE, str(tmp_path / "environment"))
+    assert bs.library_root(str(tmp_path / "flag")) == str(tmp_path / "flag")
+
+
+def test_library_root_ignores_an_empty_environment_variable(bs, monkeypatch):
+    monkeypatch.setenv(bs.LIBRARY_VARIABLE, "")
+    assert bs.library_root() == os.path.expanduser(bs.DEFAULT_LIBRARY)
+
+
+# --- clipboard --------------------------------------------------------------
+
+
+def test_clipboards_offers_pbcopy_on_macos(bs, monkeypatch):
+    monkeypatch.setattr(bs.sys, "platform", "darwin")
+    assert bs.clipboards() == (["pbcopy"],)
+
+
+def test_clipboards_offers_several_on_linux(bs, monkeypatch):
+    """No single one of these is installed everywhere, hence the list."""
+    monkeypatch.setattr(bs.sys, "platform", "linux")
+    assert [command[0] for command in bs.clipboards()] == [
+        "wl-copy",
+        "xclip",
+        "xsel",
+        "clip.exe",
+    ]
+
+
+def test_to_clipboard_uses_the_first_that_works(bs, monkeypatch):
+    monkeypatch.setattr(bs, "clipboards", lambda: (["wl-copy"], ["xclip"]))
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs["input"]))
+
+    monkeypatch.setattr(bs.subprocess, "run", fake_run)
+
+    assert bs.to_clipboard("hello") is True
+    assert calls == [(["wl-copy"], "hello")]
+
+
+def test_to_clipboard_moves_on_when_one_is_missing(bs, monkeypatch):
+    monkeypatch.setattr(bs, "clipboards", lambda: (["wl-copy"], ["xclip"]))
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if command == ["wl-copy"]:
+            raise FileNotFoundError(command)
+
+    monkeypatch.setattr(bs.subprocess, "run", fake_run)
+
+    assert bs.to_clipboard("hello") is True
+    assert calls == [["wl-copy"], ["xclip"]]
+
+
+def test_to_clipboard_moves_on_when_one_fails(bs, monkeypatch):
+    """wl-copy is installed but there is no wayland session to copy into."""
+    monkeypatch.setattr(bs, "clipboards", lambda: (["wl-copy"], ["xclip"]))
+
+    def fake_run(command, **kwargs):
+        if command == ["wl-copy"]:
+            raise bs.subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(bs.subprocess, "run", fake_run)
+
+    assert bs.to_clipboard("hello") is True
+
+
+def test_to_clipboard_reports_when_nothing_can_take_it(bs, monkeypatch, capsys):
+    """The caller prints the entry instead, rather than losing it."""
+    monkeypatch.setattr(bs, "clipboards", lambda: (["wl-copy"],))
+
+    def fake_run(command, **kwargs):
+        raise FileNotFoundError(command)
+
+    monkeypatch.setattr(bs.subprocess, "run", fake_run)
+
+    assert bs.to_clipboard("hello") is False
+    assert "no clipboard command found" in capsys.readouterr().out

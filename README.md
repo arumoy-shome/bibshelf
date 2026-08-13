@@ -21,6 +21,10 @@ The only optional dependency is `pdftotext` (from poppler), used to read an
 identifier off a pdf. Without it that one feature asks you to type the
 identifier instead; everything else works.
 
+Copying to the clipboard uses `pbcopy` on macOS and `clip` on Windows, both of
+which ship with the system. On Linux it wants one of `wl-copy`, `xclip` or
+`xsel`; with none of them installed the entry is printed instead.
+
 ## Use
 
 Give it a **DOI**, an **arXiv id**, or an **ISBN**:
@@ -33,7 +37,14 @@ $ bs 978-0-262-03561-3                # isbn, hyphens optional
 ```
 
 With `--pdf` it also files the pdf. Papers go to `files/`, books (anything with
-an ISBN) go to `books/`, both under `~/Documents/references`.
+an ISBN) go to `books/`, both under `~/Documents/references` — or wherever you
+point it:
+
+```console
+$ export BIBSHELF_LIBRARY=~/work/library   # or, per run: bs --library ...
+```
+
+Both directories have to exist; bibshelf will not create them.
 
 Leave the identifier out and it reads one off the pdf itself, then shows you the
 entry it resolved before committing to anything:
@@ -58,6 +69,7 @@ to one and it offers the next.
 | flag | |
 | --- | --- |
 | `-p, --pdf PATH` | file this pdf alongside the entry |
+| `-l, --library PATH` | where the library lives, overriding `$BIBSHELF_LIBRARY` |
 | `-f, --force` | don't ask before moving anything |
 | `-x, --to-clipboard` | copy the whole entry rather than just the bibkey |
 
