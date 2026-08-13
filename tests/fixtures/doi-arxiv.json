@@ -1,0 +1,43 @@
+{
+  "type": "article",
+  "id": "https://doi.org/10.48550/arxiv.2211.09545",
+  "categories": [
+    "Machine Learning (cs.LG)",
+    "Artificial Intelligence (cs.AI)",
+    "Numerical Analysis (math.NA)",
+    "Optimization and Control (math.OC)",
+    "Machine Learning (stat.ML)",
+    "FOS: Computer and information sciences",
+    "FOS: Computer and information sciences",
+    "FOS: Mathematics",
+    "FOS: Mathematics"
+  ],
+  "author": [
+    {
+      "family": "Dharmadhikari",
+      "given": "Susheel"
+    },
+    {
+      "family": "Menon",
+      "given": "Nandana"
+    },
+    {
+      "family": "Basak",
+      "given": "Amrita"
+    }
+  ],
+  "issued": {
+    "date-parts": [
+      [
+        2022
+      ]
+    ]
+  },
+  "abstract": "Process optimization for metal additive manufacturing (AM) is crucial to ensure repeatability, control microstructure, and minimize defects. Despite efforts to address this via the traditional design of experiments and statistical process mapping, there is limited insight on an on-the-fly optimization framework that can be integrated into a metal AM system. Additionally, most of these methods, being data-intensive, cannot be supported by a metal AM alloy or system due to budget restrictions. To tackle this issue, the article introduces a Reinforcement Learning (RL) methodology transformed into an optimization problem in the realm of metal AM. An off-policy RL framework based on Q-learning is proposed to find optimal laser power ($P$) - scan velocity ($v$) combinations with the objective of maintaining steady-state melt pool depth. For this, an experimentally validated Eagar-Tsai formulation is used to emulate the Laser-Directed Energy Deposition environment, where the laser operates as the agent across the $P-v$ space such that it maximizes rewards for a melt pool depth closer to the optimum. The culmination of the training process yields a Q-table where the state ($P,v$) with the highest Q-value corresponds to the optimized process parameter. The resultant melt pool depths and the mapping of Q-values to the $P-v$ space show congruence with experimental observations. The framework, therefore, provides a model-free approach to learning without any prior.",
+  "DOI": "10.48550/ARXIV.2211.09545",
+  "publisher": "arXiv",
+  "title": "A Reinforcement Learning Approach for Process Parameter Optimization in Additive Manufacturing",
+  "URL": "https://arxiv.org/abs/2211.09545",
+  "copyright": "Creative Commons Attribution Non Commercial No Derivatives 4.0 International",
+  "version": "1"
+}
