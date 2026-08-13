@@ -9,7 +9,7 @@ converter. That copy still exists but is superseded; see "Open items".
 ## Running things
 
 ```console
-uv run pytest            # 123 tests, ~0.06s, no network
+uv run pytest            # 125 tests, ~0.06s, no network
 uv run bs <identifier>   # from the repo
 bs <identifier>          # installed via: uv tool install ~/code/bibshelf
 ```
@@ -19,6 +19,10 @@ responses and the `offline` fixture monkeypatches `fetch`. The suite passes on
 Python 3.11 and 3.13 (both verified, not assumed).
 
 ## Releasing
+
+`__version__` is read off the installed distribution with
+`importlib.metadata`, so `pyproject.toml` is the only place a version number is
+written down and `bs --version` cannot drift from it.
 
 Bump `version` in `pyproject.toml`, then tag: `.github/workflows/publish.yml`
 fires on `v*`, runs the tests, refuses a tag that disagrees with the declared
@@ -124,6 +128,7 @@ would gain nothing from being methods.
   `win32` branch.
 - **`~/dotfiles` still has the old copy** — `bin/doi2bib` plus untracked
   `tests/`, `pyproject.toml`, `uv.lock`. Remove once `bs` has proved itself.
-- **Untested**: `read_pdf` and `main()`'s argparse wiring. Both thin wrappers.
+- **Untested**: `read_pdf`, and all of `main()`'s argparse wiring bar
+  `--version`. Both thin wrappers.
 - The naming rules are one researcher's convention. Templating them would be
   the honest thing to do for a public tool.

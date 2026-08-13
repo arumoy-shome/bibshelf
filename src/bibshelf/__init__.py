@@ -11,7 +11,13 @@ import sys
 import unicodedata
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from importlib import metadata
 from urllib import request, error
+
+try:
+    __version__ = metadata.version("bibshelf")
+except metadata.PackageNotFoundError:  # a source tree that was never installed
+    __version__ = "unknown"
 
 # Where the library lives, unless --library or $BIBSHELF_LIBRARY says otherwise.
 DEFAULT_LIBRARY = "~/Documents/references"
@@ -733,6 +739,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="bs",
         description="Shelve a paper or a book: fetch its bibtex, file its pdf.",
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"bs {__version__}",
     )
     parser.add_argument(
         "identifier",

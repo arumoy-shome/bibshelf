@@ -72,6 +72,7 @@ to one and it offers the next.
 | `-l, --library PATH` | where the library lives, overriding `$BIBSHELF_LIBRARY` |
 | `-f, --force` | don't ask before moving anything |
 | `-x, --to-clipboard` | copy the whole entry rather than just the bibkey |
+| `-V, --version` | print the version |
 
 ## How files are named
 

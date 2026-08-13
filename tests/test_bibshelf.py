@@ -703,3 +703,24 @@ def test_to_clipboard_reports_when_nothing_can_take_it(bs, monkeypatch, capsys):
 
     assert bs.to_clipboard("hello") is False
     assert "no clipboard command found" in capsys.readouterr().out
+
+
+# --- version ----------------------------------------------------------------
+
+
+def test_version_matches_the_installed_metadata(bs):
+    """A hardcoded string here would drift from pyproject.toml the first time
+    the version was bumped, so it is read off the installed distribution."""
+    from importlib import metadata
+
+    assert bs.__version__ == metadata.version("bibshelf")
+
+
+def test_version_flag_prints_and_exits(bs, monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["bs", "--version"])
+
+    with pytest.raises(SystemExit) as exit:
+        bs.main()
+
+    assert exit.value.code == 0
+    assert capsys.readouterr().out.strip() == f"bs {bs.__version__}"
