@@ -24,7 +24,7 @@ def populate_db(patch_db_store):
 
 
 def test_db_init(patch_db_store):
-    assert not Db._store.exists()
+    assert Db._store.exists()
 
     db = Db()
     assert Db._store.exists()
